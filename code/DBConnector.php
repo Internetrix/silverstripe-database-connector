@@ -3,9 +3,9 @@
 
 class DBConnector extends ViewableData {
 	
-	protected $defaultDBConfig;		//default database
-	protected $extraDBConfig;		//another database
-	protected $connectionKeyName;	//for DB::getConn()
+	protected $defaultDBConnConfig;		//default database
+	protected $extraDBConnConfig;		//another database
+// 	protected $connectionKeyName;	//for DB::getConn()
 	
 	/**
 	 * 
@@ -34,11 +34,11 @@ class DBConnector extends ViewableData {
 	 */
 	private function setDefaultDBConfig($databaseConfig){
 		$defaultCofing = DB::getConn();
-		$this->defaultDBConfig = $defaultCofing;
+		$this->defaultDBConnConfig = $defaultCofing;
 	}
 	
 	/**
-	 * Generate SS_Database object
+	 * Generate new SS_Database object
 	 */
 	private function setExtraDBConnection($ExtraDBConfig, $db_key_name){
 // 		if($db_key_name == 'default') {
@@ -67,7 +67,7 @@ class DBConnector extends ViewableData {
 		$dbClass = $ExtraDBConfig['type'];
 		$conn = new $dbClass($ExtraDBConfig);
 		
-		$this->extraDBConfig = $conn;
+		$this->extraDBConnConfig = $conn;
 	}
 	
 	public function __call($method, $arguments) {
@@ -96,16 +96,16 @@ class DBConnector extends ViewableData {
 	 * connect specific database
 	 */
 	private function connectDB(){
-// 		DB::connect($this->extraDBConfig);
-		DB::setConn($this->extraDBConfig);
+// 		DB::connect($this->extraDBConnConfig);
+		DB::setConn($this->extraDBConnConfig);
 	}
 	
 	/**
 	 * connect silverstripe database
 	 */
 	private function connectDefaultDB(){
-// 		DB::connect($this->defaultDBConfig);
-		DB::setConn($this->defaultDBConfig);
+// 		DB::connect($this->defaultDBConnConfig);
+		DB::setConn($this->defaultDBConnConfig);
 	}
 	
 	
