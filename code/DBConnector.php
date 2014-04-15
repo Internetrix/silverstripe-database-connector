@@ -174,6 +174,49 @@ class DBConnector extends ViewableData {
 	}
 	
 	
+	/**
+	 *  get all children which has no children for hierarchy table.
+	 * 
+	 *	Usage : $DBConnector->HierarchyNoChildrenRecord('page');
+	 *
+	 *	@return Array
+	 */
+	public function HierarchyNoChildrenRecord($from, $primaryID_columne = 'id', $parentID_column = 'parent_id', $select = array()){
+		$sqlQuery = new DBC_SQLQuery($this->connectionKeyName);
+		$sqlQuery->setFrom($from);
+	
+		if(!empty($select)){
+			foreach ($select as $selected_column){
+				$sqlQuery->selectField($selected_column);
+			}
+		}
+		
+		$alias_name = 'B';
+	
+		$sqlQuery->addWhere("\"B\".\"ID\" IS NULL");		//e.g '"File"."ClassName" =  \'Folder\' AND "B"."ID" IS NULL',
+		$sqlQuery->addLeftJoin($from, "\"$alias_name\".\"$parentID_column\" = \"$from\".\"$primaryID_columne\"", $alias_name);	// e.g. 'LEFT JOIN  "File" AS "B" ON  "B"."ParentID" = "File"."ID"',
+		
+		$QueryResult = $sqlQuery->execute();
+	
+		$NumberOfRows = $QueryResult->numRecords();
+	
+		if($NumberOfRows == 1){
+			$results = $QueryResult->record();
+		}elseif ($NumberOfRows > 1){
+			$results = array();
+	
+			while($record = $QueryResult->record()){
+				$results[] = $record;
+			}
+		}else{
+			$results = false;
+		}
+	
+		return $results;
+	}
+	
+	
+	
 	//***********************************************************************************************************************//
 	//		The following functions are suffixed with _dbc.
 	//		This is how it setup for making sure that connectDB() will be called before the actual function is called and
