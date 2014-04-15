@@ -5,7 +5,7 @@ class DBConnector extends ViewableData {
 	
 	protected $defaultDBConnConfig;		//default database
 	protected $extraDBConnConfig;		//another database
-// 	protected $connectionKeyName;	//for DB::getConn()
+	protected $connectionKeyName;		//for DB::getConn()
 	
 	/**
 	 * 
@@ -41,9 +41,9 @@ class DBConnector extends ViewableData {
 	 * Generate new SS_Database object
 	 */
 	private function setExtraDBConnection($ExtraDBConfig, $db_key_name){
-// 		if($db_key_name == 'default') {
-// 			user_error("DBConnector->initDBConnection: \$db_key_name 'default' is token. Please choose another one.", E_USER_ERROR);
-// 		}
+		if($db_key_name == 'default') {
+			user_error("DBConnector->initDBConnection: \$db_key_name 'default' is token. Please choose another one.", E_USER_ERROR);
+		}
 		
 		if(!isset($ExtraDBConfig['type']) || empty($ExtraDBConfig['type'])) {
 			user_error("DBConnector->initDBConnection: Not passed a valid database config", E_USER_ERROR);
@@ -53,21 +53,25 @@ class DBConnector extends ViewableData {
 			user_error("DBConnector->initDBConnection: database name is required.", E_USER_ERROR);
 		}
 		
-// 		if($db_key_name === null){
-// 			$db_key_name = $ExtraDBConfig['database'];
-// 		}else{
-// 			$db_key_name = $db_key_name;
-// 		}
-
-// 		//connection exists. return error.
-// 		if(is_object(DB::getConn($db_key_name))) {
-// 			user_error("DBConnector->initDBConnection: \$db_key_name '$db_key_name' is token. Please choose another one.", E_USER_ERROR);
-// 		}
+		if($db_key_name === null){
+			$db_key_name = $ExtraDBConfig['database'];
+		}else{
+			$db_key_name = $db_key_name;
+		}
+		
+		//connection exists. return error.
+		if(is_object(DB::getConn($db_key_name))) {
+			user_error("DBConnector->initDBConnection: \$db_key_name '$db_key_name' is token. Please choose another one.", E_USER_ERROR);
+		}
+		
+		$this->connectionKeyName = $db_key_name;
 			
 		$dbClass = $ExtraDBConfig['type'];
 		$conn = new $dbClass($ExtraDBConfig);
 		
 		$this->extraDBConnConfig = $conn;
+		
+		DB::setConn($this->extraDBConnConfig, $db_key_name);
 	}
 	
 	public function __call($method, $arguments) {
@@ -109,45 +113,79 @@ class DBConnector extends ViewableData {
 	}
 	
 	
-	
-	
-	
-	//***********************************************************************************************************************//
-	//		The following functions are suffixed with _dbc.
-	//		This is how it setup for making sure that connectFS() will be called before the actual function is called and
-	//	    connectSS() will be called at the end.
-	//
-	//		example:
-	//
-	//		When $FSConnector->query() is called, then
-	//		1. call $this->connectDB()
-	// 		2. call $this->query_fsc()
-	//		3. call $this->connectDefaultDB()
-	//***********************************************************************************************************************//
-
 	/**
 	 *	Usage : $DBConnector->query('SELECT COUNT(*) FROM "page"');
 	 *
 	 *	@return Array
 	 */
-	public function query_dbc($query){
-		
-		$queryOBJ = DB::query($query);
-
+	public function query($query){
+	
+		$queryOBJ = DB::getConn($this->connectionKeyName)->query($query, E_USER_ERROR);
+	
 		$NumberOfRows = $queryOBJ->numRecords();
 	
 		if($NumberOfRows){
 			$results = array();
-			
+				
 			while($record = $queryOBJ->record()){
 				$results[] = $record;
 			}
 		}else{
 			$results = false;
 		}
-		
+	
 		return $results;
 	}
+	
+	/**
+	 *	Usage : $DBConnector->GetBy('page', 'id', 1);
+	 *
+	 *	@return Array
+	 */
+	public function GetBy($from, $condition_field, $value, $select = array()){
+		$sqlQuery = new DBC_SQLQuery($this->connectionKeyName);
+		$sqlQuery->setFrom($from);
+	
+		if(!empty($select)){
+			foreach ($select as $selected_column){
+				$sqlQuery->selectField($selected_column);
+			}
+		}
+	
+		$sqlQuery->addWhere("\"{$condition_field}\" = '{$value}'");
+	
+		$QueryResult = $sqlQuery->execute();
+	
+		$NumberOfRows = $QueryResult->numRecords();
+	
+		if($NumberOfRows == 1){
+			$results = $QueryResult->record();
+		}elseif ($NumberOfRows > 1){	
+			$results = array();
+	
+			while($record = $QueryResult->record()){
+				$results[] = $record;
+			}
+		}else{
+			$results = false;
+		}
+	
+		return $results;
+	}
+	
+	
+	//***********************************************************************************************************************//
+	//		The following functions are suffixed with _dbc.
+	//		This is how it setup for making sure that connectDB() will be called before the actual function is called and
+	//	    connectDefaultDB() will be called at the end.
+	//
+	//		example:
+	//
+	//		When $FSConnector->SQLQuery() is called, then
+	//		1. call $this->connectDB()
+	// 		2. call $this->SQLQuery_fsc()
+	//		3. call $this->connectDefaultDB()
+	//***********************************************************************************************************************//
 	
 	/**
 	 *	Usage : $DBConnector->SQLQuery($sqlQuery);
@@ -160,39 +198,7 @@ class DBConnector extends ViewableData {
 		return $result;
 	}
 	
-	/**
-	 *	Usage : $DBConnector->GetOneBy('page', 'id', 1);
-	 *
-	 *	@return Array
-	 */
-	public function GetBy_dbc($from, $condition_field, $value, $select = array()){
-		$sqlQuery = new SQLQuery();
-		$sqlQuery->setFrom($from);
-		
-		if(!empty($select)){
-			foreach ($select as $selected_column){
-				$sqlQuery->selectField($selected_column);
-			}
-		}
-		
-		$sqlQuery->addWhere("\"{$condition_field}\" = '{$value}'");
-		
-		$result = $sqlQuery->execute();
-		
-		$NumberOfRows = $queryOBJ->numRecords();
-		
-		if($NumberOfRows){
-			$results = array();
-				
-			while($record = $queryOBJ->record()){
-				$results[] = $record;
-			}
-		}else{
-			$results = false;
-		}
-		
-		return $result->record();
-	}
+
 
 	
 }
